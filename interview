@@ -1,0 +1,81 @@
+--1
+
+class First:
+    def getClassname(self):
+        return "First"
+    
+    def getLetter(self):
+        return "A"
+
+class Second:
+    def getClassname(self):
+        return "Second"
+    
+    def getLetter(self):
+        return "B"
+
+first_instance = First()
+second_instance = Second()
+
+print(first_instance.getClassname())
+print(first_instance.getLetter()) 
+print(second_instance.getClassname()) 
+print(second_instance.getLetter())    
+
+--2
+
+import re
+
+input_string = input()
+
+regex = r'[^,]*\.(xls|xlsx|xlsm|vba)'
+
+matches = re.findall(regex, input_string, re.IGNORECASE)
+
+result = ','.join(matches)
+
+print(result)
+
+--4
+
+https://drive.google.com/file/d/1bgDBjtshOrly-sRaDyn8LdCP1NfyR5tk/view?usp=sharing
+
+--5
+
+	select DeclaredTime, Distanse, Style,R.SwimmerId, CompetitionId, C.CoachId, C.FirstName, C.LastName, DENSE_RANK() over (partition by competitionid, style order by declaredtime) as Result, CONCAT(C.FirstName, ' ', C.LastName) as Coach from Result as R
+	left join Swimmer as S on S.SwimmerId = R.SwimmerId
+	left join Coach as C on C.CoachId = S.CoachId
+
+--6
+
+create view Swimmers_Rating as
+
+	with Result_Rating as (
+		select FirstName, LastName, CompetitionName, year(C.StartDate) as YearComp, DENSE_RANK() over (partition by CompetitionName order by declaredtime) as WinnerComp, DENSE_RANK() over (partition by year(C.StartDate) order by declaredtime) as WinnerYear from Result as R
+		left join Swimmer as S on S.SwimmerId = R.SwimmerId
+		left join Competition as C on C.competitionid = r.competitionid
+		)
+
+	select top 100 * from Result_Rating
+	where WinnerComp in (1,2,3) or  WinnerYear in (1,2,3)
+	order by WinnerComp, WinnerYear
+
+--7
+
+create view Coach_Rating as
+
+		select top 10 Coach, sum(Points) as ResultSum
+		from (select c.coachid, s.swimmerid, competitionid, r.declaredtime, Concat(C.FirstName, ' ', C.LastName) as Coach, DENSE_RANK() over (partition by competitionid order by declaredtime) as Rank, case
+			when DENSE_RANK() over (partition by competitionid order by declaredtime) = 1 then 3
+			when DENSE_RANK() over (partition by competitionid order by declaredtime) = 2 then 2
+			when DENSE_RANK() over (partition by competitionid order by declaredtime) = 3 then 1
+			else 0
+			end as Points
+		from Result as R
+		left join Swimmer as S on S.SwimmerId = R.SwimmerId
+		left join Coach as C on C.CoachId = S.CoachId
+		) as B
+		where rank in (1,2,3)
+		group by Coach
+		order by 2 desc
+
